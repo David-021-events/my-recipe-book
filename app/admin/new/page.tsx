@@ -84,8 +84,18 @@ export default function NewRecipePage() {
       return
     }
 
+    if (res.status === 429) {
+      setExtractError('Too many requests — please wait a moment and try again.')
+      return
+    }
+
     if (res.status === 503) {
-      setExtractError('AI service error. Please try again in a moment.')
+      const errData = await res.json().catch(() => ({} as { error?: string }))
+      if (errData.error === 'ai_auth_error') {
+        setExtractError('AI service authentication failed. Check the ANTHROPIC_API_KEY environment variable in Vercel.')
+      } else {
+        setExtractError('AI service error. Please try again — if this persists, check the Vercel function logs for details.')
+      }
       return
     }
 

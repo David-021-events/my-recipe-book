@@ -46,8 +46,17 @@ export async function POST(request: NextRequest) {
       const result = await extractRecipe({ type: 'image', data: content, mediaType })
       return NextResponse.json(result)
     }
-  } catch {
-    return NextResponse.json({ error: 'AI service error' }, { status: 503 })
+  } catch (err) {
+    const apiErr = err as { status?: number; message?: string }
+    console.error('[/api/extract] error:', apiErr?.status, apiErr?.message ?? String(err))
+
+    if (apiErr?.status === 429) {
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+    }
+    if (apiErr?.status === 401 || apiErr?.status === 403) {
+      return NextResponse.json({ error: 'ai_auth_error' }, { status: 503 })
+    }
+    return NextResponse.json({ error: 'ai_error' }, { status: 503 })
   }
 
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
