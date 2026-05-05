@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { Ingredient } from '@/lib/types'
 
 /**
  * Shape of the data collected by RecipeForm and passed to the onSave callback.
@@ -10,11 +11,19 @@ export interface RecipeFormData {
   title: string
   servings: number
   instructions: string | null
-  ingredients: unknown[] | null
+  ingredients: Ingredient[] | null
   raw_input: string | null
   status: 'draft' | 'published'
   prep_time: number | null
   cook_time: number | null
+}
+
+interface IngredientRow {
+  name: string
+  quantity: string
+  unit: string
+  hard_to_find: boolean
+  substitutions: string[]
 }
 
 interface Props {
@@ -23,9 +32,22 @@ interface Props {
   saving: boolean
 }
 
+const UNITS = ['tsp', 'tbsp', 'cup', 'oz', 'lb', 'ml', 'g', 'kg', 'clove', 'pinch', 'count']
+
+function toRows(ingredients: Ingredient[] | null | undefined): IngredientRow[] {
+  if (!ingredients) return []
+  return ingredients.map((i) => ({
+    name: i.name,
+    quantity: i.quantity != null ? String(i.quantity) : '',
+    unit: i.unit ?? '',
+    hard_to_find: i.hard_to_find,
+    substitutions: i.substitutions,
+  }))
+}
+
 /**
- * Shared recipe form used by both the new and edit admin pages.
- * Ingredients are entered as raw JSON text and parsed on submit.
+ * Shared recipe form used by the edit admin page.
+ * Uses a per-row ingredient editor instead of raw JSON.
  */
 export default function RecipeForm({ initial, onSave, saving }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
@@ -33,31 +55,39 @@ export default function RecipeForm({ initial, onSave, saving }: Props) {
   const [prepTime, setPrepTime] = useState(String(initial?.prep_time ?? ''))
   const [cookTime, setCookTime] = useState(String(initial?.cook_time ?? ''))
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
-  const [ingredientsRaw, setIngredientsRaw] = useState(
-    initial?.ingredients ? JSON.stringify(initial.ingredients, null, 2) : ''
+  const [ingredients, setIngredients] = useState<IngredientRow[]>(
+    toRows(initial?.ingredients as Ingredient[] | null | undefined)
   )
   const [status, setStatus] = useState<'draft' | 'published'>(initial?.status ?? 'draft')
-  const [jsonError, setJsonError] = useState('')
+
+  function updateIngredient(i: number, field: keyof IngredientRow, value: string | boolean) {
+    setIngredients((prev) => prev.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)))
+  }
+
+  function addIngredient() {
+    setIngredients((prev) => [
+      ...prev,
+      { name: '', quantity: '', unit: '', hard_to_find: false, substitutions: [] },
+    ])
+  }
+
+  function removeIngredient(i: number) {
+    setIngredients((prev) => prev.filter((_, idx) => idx !== i))
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setJsonError('')
-
-    let ingredients: unknown[] | null = null
-    if (ingredientsRaw.trim()) {
-      try {
-        ingredients = JSON.parse(ingredientsRaw)
-      } catch {
-        setJsonError('Ingredients JSON is invalid. Check the format.')
-        return
-      }
-    }
-
     onSave({
       title,
       servings: parseInt(servings, 10) || 4,
       instructions: instructions || null,
-      ingredients,
+      ingredients: ingredients.map((row) => ({
+        name: row.name,
+        quantity: row.quantity ? parseFloat(row.quantity) : null,
+        unit: (row.unit as Ingredient['unit']) || null,
+        hard_to_find: row.hard_to_find,
+        substitutions: row.substitutions,
+      })),
       raw_input: null,
       status,
       prep_time: prepTime ? parseInt(prepTime, 10) : null,
@@ -123,19 +153,52 @@ export default function RecipeForm({ initial, onSave, saving }: Props) {
       </div>
 
       <div>
-        <label htmlFor="rf-ingredients" className={labelClass}>
-          Ingredients{' '}
-          <span className="font-normal text-neutral-500">(JSON array — populated automatically by extraction in Step 7)</span>
-        </label>
-        <textarea
-          id="rf-ingredients"
-          value={ingredientsRaw}
-          onChange={(e) => setIngredientsRaw(e.target.value)}
-          rows={6}
-          placeholder='[{"name":"flour","quantity":2,"unit":"cup","hard_to_find":false,"substitutions":[]}]'
-          className={inputClass}
-        />
-        {jsonError && <p className="font-sans text-xs text-red-600 mt-1">{jsonError}</p>}
+        <p className={labelClass}>Ingredients</p>
+        <div className="space-y-2">
+          {ingredients.map((row, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={row.quantity}
+                onChange={(e) => updateIngredient(i, 'quantity', e.target.value)}
+                placeholder="Qty"
+                className="w-16 border border-neutral-200 rounded-md px-2 py-2 font-sans text-sm text-neutral-900"
+              />
+              <select
+                value={row.unit}
+                onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
+                className="border border-neutral-200 rounded-md px-2 py-2 font-sans text-sm text-neutral-900 bg-white"
+              >
+                <option value="">—</option>
+                {UNITS.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={row.name}
+                onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                placeholder="Ingredient name"
+                className="flex-1 border border-neutral-200 rounded-md px-3 py-2 font-sans text-sm text-neutral-900"
+              />
+              <button
+                type="button"
+                onClick={() => removeIngredient(i)}
+                className="font-sans text-sm text-red-500 hover:text-red-700 px-1"
+                aria-label="Remove ingredient"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addIngredient}
+          className="mt-2 font-sans text-sm text-brand-500 hover:text-brand-600"
+        >
+          + Add ingredient
+        </button>
       </div>
 
       <div>

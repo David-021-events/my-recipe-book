@@ -22,7 +22,7 @@ export async function GET() {
  * @param request - The incoming request containing the recipe JSON body.
  */
 export async function POST(request: NextRequest) {
-  if (!getAdminSession(request)) {
+  if (!await getAdminSession(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

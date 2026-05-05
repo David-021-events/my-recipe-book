@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 })
   }
 
-  const response = NextResponse.redirect(new URL('/admin', request.url))
-  response.cookies.set('admin_session', signCookie('admin'), {
+  const response = NextResponse.json({ ok: true })
+  response.cookies.set('admin_session', await signCookie('admin'), {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',

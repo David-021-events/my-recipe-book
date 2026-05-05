@@ -1,18 +1,23 @@
-import crypto from 'crypto'
+/**
+ * Cookie authentication using the Web Crypto API (compatible with Edge Runtime and Node.js).
+ * All HMAC operations use SHA-256 via globalThis.crypto.subtle.
+ */
 
 const COOKIE_SECRET = process.env.COOKIE_SECRET!
 
-function hmac(value: string): string {
-  return crypto.createHmac('sha256', COOKIE_SECRET).update(value).digest('hex')
-}
-
-/**
- * Hashes a plaintext password using HMAC-SHA256 with the COOKIE_SECRET.
- * @param password - The plaintext password to hash.
- * @returns The hex-encoded HMAC digest.
- */
-export function hashPassword(password: string): string {
-  return crypto.createHmac('sha256', COOKIE_SECRET).update(password).digest('hex')
+async function hmac(value: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const key = await globalThis.crypto.subtle.importKey(
+    'raw',
+    encoder.encode(COOKIE_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await globalThis.crypto.subtle.sign('HMAC', key, encoder.encode(value))
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 /**
@@ -20,26 +25,28 @@ export function hashPassword(password: string): string {
  * @param value - The raw cookie value to sign.
  * @returns The signed cookie string in the format `value.signature`.
  */
-export function signCookie(value: string): string {
-  return `${value}.${hmac(value)}`
+export async function signCookie(value: string): Promise<string> {
+  return `${value}.${await hmac(value)}`
 }
 
 /**
- * Verifies a signed cookie using constant-time comparison to prevent timing attacks.
+ * Verifies a signed cookie using timing-safe comparison to prevent timing attacks.
  * @param cookie - The signed cookie string in the format `value.signature`.
  * @returns `true` if the signature is valid, `false` otherwise.
  */
-export function verifyCookie(cookie: string): boolean {
+export async function verifyCookie(cookie: string): Promise<boolean> {
   const lastDot = cookie.lastIndexOf('.')
   if (lastDot === -1) return false
   const value = cookie.slice(0, lastDot)
   const signature = cookie.slice(lastDot + 1)
-  const expected = hmac(value)
-  try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
-  } catch {
-    return false
+  const expected = await hmac(value)
+  if (signature.length !== expected.length) return false
+  // Timing-safe XOR comparison for hex strings
+  let result = 0
+  for (let i = 0; i < signature.length; i++) {
+    result |= signature.charCodeAt(i) ^ expected.charCodeAt(i)
   }
+  return result === 0
 }
 
 /**
@@ -47,7 +54,7 @@ export function verifyCookie(cookie: string): boolean {
  * @param request - The incoming HTTP Request object.
  * @returns `true` if a valid admin session cookie is present, `false` otherwise.
  */
-export function getAdminSession(request: Request): boolean {
+export async function getAdminSession(request: Request): Promise<boolean> {
   const cookieHeader = request.headers.get('cookie') ?? ''
   const match = cookieHeader.match(/(?:^|;\s*)admin_session=([^;]*)/)
   if (!match) return false

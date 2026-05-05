@@ -1,5 +1,10 @@
 const attempts = new Map<string, { count: number; resetAt: number }>()
 
+/** Clears all rate limit state. For use in tests only. */
+export function _resetForTests(): void {
+  attempts.clear()
+}
+
 const MAX_ATTEMPTS = 5
 const WINDOW_MS = 15 * 60 * 1000 // 15 minutes
 

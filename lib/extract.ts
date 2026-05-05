@@ -1,0 +1,136 @@
+import Anthropic from '@anthropic-ai/sdk'
+import { z } from 'zod'
+
+const client = new Anthropic()
+
+const PROMPT = `You are a recipe parser. Extract the following from the input and return ONLY valid JSON — no explanation, no markdown.
+
+Return this structure:
+{
+  "title": string,
+  "servings": number,
+  "ingredients": [
+    {
+      "name": string,
+      "quantity": number | null,
+      "unit": string | null,
+      "hard_to_find": boolean,
+      "substitutions": string[]
+    }
+  ],
+  "instructions": string
+}
+
+Rules:
+- Return ONLY JSON. No markdown, no code fences, no explanation.
+- hard_to_find is true only for ingredients unlikely to be in a standard Western pantry.
+- substitutions: max 2 common alternatives, only populate if hard_to_find is true.
+- unit must be one of: tsp, tbsp, cup, oz, lb, ml, g, kg, clove, pinch, count.
+- Use "count" for items measured by whole number (eggs, onions, garlic cloves).
+- Map all unit variants to the list above (e.g. tablespoon / T / Tbs → tbsp).
+- If quantity or unit cannot be determined, use null.
+- Preserve instructions as a single unformatted text block.`
+
+const RecipeExtractedSchema = z.object({
+  title: z.string(),
+  servings: z.number(),
+  ingredients: z.array(
+    z.object({
+      name: z.string(),
+      quantity: z.number().nullable(),
+      unit: z
+        .enum(['tsp', 'tbsp', 'cup', 'oz', 'lb', 'ml', 'g', 'kg', 'clove', 'pinch', 'count'])
+        .nullable(),
+      hard_to_find: z.boolean(),
+      substitutions: z.array(z.string()).max(2),
+    })
+  ),
+  instructions: z.string(),
+})
+
+export type RecipeExtracted = z.infer<typeof RecipeExtractedSchema>
+
+type ExtractionInput =
+  | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mediaType: 'image/jpeg' | 'image/png' }
+  | { type: 'url'; url: string }
+
+export type ExtractionResult =
+  | { success: true; recipe: RecipeExtracted }
+  | { success: false; fallback: true; rawText: string }
+  | { success: false; fallback?: false; error: 'url_fetch_failed' }
+
+function buildMessages(input: ExtractionInput & { type: 'text' | 'image' }): Anthropic.MessageParam[] {
+  if (input.type === 'image') {
+    return [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: input.mediaType, data: input.data },
+          },
+          { type: 'text', text: PROMPT },
+        ],
+      },
+    ]
+  }
+  return [{ role: 'user', content: `${PROMPT}\n\n${input.text}` }]
+}
+
+async function callClaude(input: ExtractionInput & { type: 'text' | 'image' }): Promise<string> {
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2048,
+    messages: buildMessages(input),
+  })
+  const block = message.content[0]
+  return block.type === 'text' ? block.text : ''
+}
+
+function parseAndValidate(raw: string): RecipeExtracted | null {
+  try {
+    const parsed = JSON.parse(raw)
+    const result = RecipeExtractedSchema.safeParse(parsed)
+    return result.success ? result.data : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Extracts structured recipe data from text, an image, or a URL using Claude.
+ * Retries once on JSON parse failure before falling back to raw text.
+ * @param input - The extraction input: text, base64 image, or URL.
+ * @returns A typed result: success with recipe, fallback with raw text, or url_fetch_failed.
+ */
+export async function extractRecipe(input: ExtractionInput): Promise<ExtractionResult> {
+  let resolvedInput: ExtractionInput & { type: 'text' | 'image' }
+
+  if (input.type === 'url') {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10_000)
+      const res = await fetch(input.url, { signal: controller.signal })
+      clearTimeout(timeout)
+      const html = await res.text()
+      const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+      resolvedInput = { type: 'text', text }
+    } catch {
+      return { success: false, error: 'url_fetch_failed' }
+    }
+  } else {
+    resolvedInput = input
+  }
+
+  const firstResponse = await callClaude(resolvedInput)
+  const firstResult = parseAndValidate(firstResponse)
+  if (firstResult) return { success: true, recipe: firstResult }
+
+  // Retry once
+  const secondResponse = await callClaude(resolvedInput)
+  const secondResult = parseAndValidate(secondResponse)
+  if (secondResult) return { success: true, recipe: secondResult }
+
+  return { success: false, fallback: true, rawText: secondResponse }
+}
