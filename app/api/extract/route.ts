@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result)
     }
   } catch {
-    return NextResponse.json({ success: false, fallback: true, rawText: '' }, { status: 200 })
+    return NextResponse.json({ error: 'AI service error' }, { status: 503 })
   }
 
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 })

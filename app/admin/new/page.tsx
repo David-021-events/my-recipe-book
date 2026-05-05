@@ -79,8 +79,13 @@ export default function NewRecipePage() {
     setExtracting(false)
 
     if (res.status === 422) {
-      setExtractError('Could not fetch that URL. Paste the recipe text instead.')
+      setExtractError('Could not fetch that URL — the site may be blocking automated access. Try pasting the recipe text instead.')
       setTab('text')
+      return
+    }
+
+    if (res.status === 503) {
+      setExtractError('AI service error. Please try again in a moment.')
       return
     }
 
@@ -92,7 +97,12 @@ export default function NewRecipePage() {
     const data = await res.json()
 
     if (data.success === false && data.fallback) {
-      setFallbackText(data.rawText ?? '')
+      if (data.rawText) {
+        setFallbackText(data.rawText)
+      } else {
+        setExtractError('Extraction failed — Claude could not parse a recipe from this content. Try pasting the text instead.')
+        setTab('text')
+      }
       return
     }
 
