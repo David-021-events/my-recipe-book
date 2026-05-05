@@ -27,24 +27,27 @@ export async function POST(request: NextRequest) {
   }
   const { type, content } = parsed.data
 
-  if (type === 'text') {
-    const result = await extractRecipe({ type: 'text', text: content })
-    return NextResponse.json(result)
-  }
-
-  if (type === 'url') {
-    const result = await extractRecipe({ type: 'url', url: content })
-    if (!result.success && !result.fallback) {
-      return NextResponse.json({ error: result.error }, { status: 422 })
+  try {
+    if (type === 'text') {
+      const result = await extractRecipe({ type: 'text', text: content })
+      return NextResponse.json(result)
     }
-    return NextResponse.json(result)
-  }
 
-  if (type === 'image') {
-    // Derive media type from base64 prefix or default to jpeg
-    const mediaType = content.startsWith('/9j') ? 'image/jpeg' : 'image/png'
-    const result = await extractRecipe({ type: 'image', data: content, mediaType })
-    return NextResponse.json(result)
+    if (type === 'url') {
+      const result = await extractRecipe({ type: 'url', url: content })
+      if (!result.success && !result.fallback) {
+        return NextResponse.json({ error: result.error }, { status: 422 })
+      }
+      return NextResponse.json(result)
+    }
+
+    if (type === 'image') {
+      const mediaType = content.startsWith('/9j') ? 'image/jpeg' : 'image/png'
+      const result = await extractRecipe({ type: 'image', data: content, mediaType })
+      return NextResponse.json(result)
+    }
+  } catch {
+    return NextResponse.json({ success: false, fallback: true, rawText: '' }, { status: 200 })
   }
 
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 })

@@ -127,10 +127,20 @@ export async function extractRecipe(input: ExtractionInput): Promise<ExtractionR
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 10_000)
-      const res = await fetch(input.url, { signal: controller.signal })
+      const res = await fetch(input.url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RecipeBot/1.0)' },
+      })
       clearTimeout(timeout)
+      if (!res.ok) return { success: false, error: 'url_fetch_failed' }
       const html = await res.text()
-      const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+      const text = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 30_000)
       resolvedInput = { type: 'text', text }
     } catch {
       return { success: false, error: 'url_fetch_failed' }
