@@ -106,7 +106,9 @@ async function callClaude(input: ExtractionInput & { type: 'text' | 'image' }): 
 
 function parseAndValidate(raw: string): RecipeExtracted | null {
   try {
-    const parsed = JSON.parse(raw)
+    // Claude sometimes wraps JSON in markdown code fences despite instructions
+    const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+    const parsed = JSON.parse(clean)
     const result = RecipeExtractedSchema.safeParse(parsed)
     return result.success ? result.data : null
   } catch {
@@ -140,7 +142,7 @@ export async function extractRecipe(input: ExtractionInput): Promise<ExtractionR
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 30_000)
+        .slice(0, 15_000)
       resolvedInput = { type: 'text', text }
     } catch {
       return { success: false, error: 'url_fetch_failed' }
