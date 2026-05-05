@@ -69,9 +69,14 @@ export default function RecipeDetail({ recipe }: Props) {
           )}
 
           {/* Unit toggle */}
-          <div className="inline-flex rounded-full border border-brand-200 bg-brand-100 p-0.5 ml-auto">
+          <div
+            role="group"
+            aria-label="Unit system"
+            className="inline-flex rounded-full border border-brand-200 bg-brand-100 p-0.5 ml-auto"
+          >
             <button
               onClick={() => setUnit('imperial')}
+              aria-pressed={unit === 'imperial'}
               className={`px-4 py-1.5 text-sm rounded-full transition-colors ${
                 unit === 'imperial'
                   ? 'bg-white shadow-sm font-semibold text-neutral-900'
@@ -82,6 +87,7 @@ export default function RecipeDetail({ recipe }: Props) {
             </button>
             <button
               onClick={() => setUnit('metric')}
+              aria-pressed={unit === 'metric'}
               className={`px-4 py-1.5 text-sm rounded-full transition-colors ${
                 unit === 'metric'
                   ? 'bg-white shadow-sm font-semibold text-neutral-900'
@@ -121,7 +127,17 @@ export default function RecipeDetail({ recipe }: Props) {
                   </div>
                   {ingredient.hard_to_find && (
                     <div className="relative group inline-flex ml-2 shrink-0">
-                      <span className="text-warning-500 text-base cursor-help">⚠</span>
+                      <span
+                        role="img"
+                        aria-label={
+                          ingredient.substitutions.length > 0
+                            ? `Hard to find — substitute: ${ingredient.substitutions.join(' or ')}`
+                            : 'Hard to find — no suitable alternative'
+                        }
+                        className="text-warning-500 text-base cursor-help"
+                      >
+                        ⚠
+                      </span>
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-48 bg-neutral-800 text-white text-xs rounded px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-normal text-center">
                         {ingredient.substitutions.length > 0
                           ? ingredient.substitutions.join(' or ')

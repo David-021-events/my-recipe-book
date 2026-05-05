@@ -57,6 +57,7 @@ const RecipeExtractedSchema = z.object({
     .transform((v) => JSON.stringify(v)),
 })
 
+/** The validated, structured recipe data produced by the Claude extraction pipeline. */
 export type RecipeExtracted = z.infer<typeof RecipeExtractedSchema>
 
 type ExtractionInput =
@@ -64,6 +65,12 @@ type ExtractionInput =
   | { type: 'image'; data: string; mediaType: 'image/jpeg' | 'image/png' }
   | { type: 'url'; url: string }
 
+/**
+ * Discriminated union returned by {@link extractRecipe}.
+ * - `success: true` — structured recipe was extracted and validated.
+ * - `success: false, fallback: true` — Claude responded but JSON was invalid; raw text is preserved.
+ * - `success: false, error: 'url_fetch_failed'` — the provided URL could not be fetched.
+ */
 export type ExtractionResult =
   | { success: true; recipe: RecipeExtracted }
   | { success: false; fallback: true; rawText: string }

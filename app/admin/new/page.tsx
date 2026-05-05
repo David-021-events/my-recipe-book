@@ -195,10 +195,10 @@ export default function NewRecipePage() {
       <h1 className="font-display text-2xl font-bold text-neutral-900 mb-6">New Recipe</h1>
 
       {/* Tab bar */}
-      <div className="flex border-b border-brand-200 mb-6">
-        <button className={tabClass('text')} onClick={() => setTab('text')}>Paste Text</button>
-        <button className={tabClass('photo')} onClick={() => setTab('photo')}>Upload Photo</button>
-        <button className={tabClass('url')} onClick={() => setTab('url')}>Paste URL</button>
+      <div role="tablist" aria-label="Recipe input method" className="flex border-b border-brand-200 mb-6">
+        <button role="tab" aria-selected={tab === 'text'} className={tabClass('text')} onClick={() => setTab('text')}>Paste Text</button>
+        <button role="tab" aria-selected={tab === 'photo'} className={tabClass('photo')} onClick={() => setTab('photo')}>Upload Photo</button>
+        <button role="tab" aria-selected={tab === 'url'} className={tabClass('url')} onClick={() => setTab('url')}>Paste URL</button>
       </div>
 
       {extractError && (
@@ -232,6 +232,7 @@ export default function NewRecipePage() {
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png"
+            aria-label="Recipe photo (JPEG or PNG)"
             className="block font-sans text-sm text-neutral-700"
           />
           <p className="font-sans text-xs text-neutral-500">
