@@ -2,6 +2,8 @@ import { supabaseAdmin } from '@/lib/supabase'
 import type { Recipe } from '@/lib/types'
 import AdminRecipeList from './AdminRecipeList'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Admin recipes list page — server component that fetches all recipes (draft + published)
  * and passes them to the client list component for rendering and interactions.

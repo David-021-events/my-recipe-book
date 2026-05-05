@@ -28,6 +28,7 @@ export default function EditRecipeClient({ recipe }: Props) {
       body: JSON.stringify(data),
     })
     if (res.ok) {
+      router.refresh()
       router.push('/admin')
     } else {
       const json = await res.json()
@@ -40,6 +41,7 @@ export default function EditRecipeClient({ recipe }: Props) {
     if (!confirm(`Delete "${recipe.title}"? This cannot be undone.`)) return
     const res = await fetch(`/api/recipes/${recipe.id}`, { method: 'DELETE' })
     if (res.ok) {
+      router.refresh()
       router.push('/admin')
     } else {
       setError('Failed to delete recipe.')

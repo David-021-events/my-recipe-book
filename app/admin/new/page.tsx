@@ -191,6 +191,7 @@ export default function NewRecipePage() {
     })
 
     if (res.ok) {
+      router.refresh()
       router.push('/admin')
     } else {
       const json = await res.json()
