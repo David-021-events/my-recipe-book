@@ -18,7 +18,10 @@ Return this structure:
       "substitutions": string[]
     }
   ],
-  "instructions": string
+  "instructions": {
+    "mise_en_place": [string],
+    "steps": [string]
+  }
 }
 
 Rules:
@@ -29,7 +32,8 @@ Rules:
 - Use "count" for items measured by whole number (eggs, onions, garlic cloves).
 - Map all unit variants to the list above (e.g. tablespoon / T / Tbs → tbsp).
 - If quantity or unit cannot be determined, use null.
-- Preserve instructions as a single unformatted text block.`
+- instructions.mise_en_place: preparation steps only (pre-heat, measure, dice, soak). Empty array if none.
+- instructions.steps: numbered cooking steps in order. Each step is one complete action.`
 
 const RecipeExtractedSchema = z.object({
   title: z.string(),
@@ -45,7 +49,12 @@ const RecipeExtractedSchema = z.object({
       substitutions: z.array(z.string()).max(2),
     })
   ),
-  instructions: z.string(),
+  instructions: z
+    .object({
+      mise_en_place: z.array(z.string()),
+      steps: z.array(z.string()),
+    })
+    .transform((v) => JSON.stringify(v)),
 })
 
 export type RecipeExtracted = z.infer<typeof RecipeExtractedSchema>

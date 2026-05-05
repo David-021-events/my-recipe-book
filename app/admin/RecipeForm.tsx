@@ -54,7 +54,18 @@ export default function RecipeForm({ initial, onSave, saving }: Props) {
   const [servings, setServings] = useState(String(initial?.servings ?? 4))
   const [prepTime, setPrepTime] = useState(String(initial?.prep_time ?? ''))
   const [cookTime, setCookTime] = useState(String(initial?.cook_time ?? ''))
-  const [instructions, setInstructions] = useState(initial?.instructions ?? '')
+  const [miseEnPlace, setMiseEnPlace] = useState(() => {
+    try {
+      const parsed = JSON.parse(initial?.instructions ?? '')
+      return (parsed?.mise_en_place as string[] | undefined)?.join('\n') ?? ''
+    } catch { return '' }
+  })
+  const [steps, setSteps] = useState(() => {
+    try {
+      const parsed = JSON.parse(initial?.instructions ?? '')
+      return (parsed?.steps as string[] | undefined)?.join('\n') ?? ''
+    } catch { return initial?.instructions ?? '' }
+  })
   const [ingredients, setIngredients] = useState<IngredientRow[]>(
     toRows(initial?.ingredients as Ingredient[] | null | undefined)
   )
@@ -80,7 +91,12 @@ export default function RecipeForm({ initial, onSave, saving }: Props) {
     onSave({
       title,
       servings: parseInt(servings, 10) || 4,
-      instructions: instructions || null,
+      instructions: (() => {
+        const mep = miseEnPlace.split('\n').map((s) => s.trim()).filter(Boolean)
+        const st = steps.split('\n').map((s) => s.trim()).filter(Boolean)
+        if (mep.length === 0 && st.length === 0) return null
+        return JSON.stringify({ mise_en_place: mep, steps: st })
+      })(),
       ingredients: ingredients.map((row) => ({
         name: row.name,
         quantity: row.quantity ? parseFloat(row.quantity) : null,
@@ -202,15 +218,29 @@ export default function RecipeForm({ initial, onSave, saving }: Props) {
       </div>
 
       <div>
-        <label htmlFor="rf-instructions" className={labelClass}>Instructions</label>
+        <label htmlFor="rf-mise-en-place" className={labelClass}>Mise en Place</label>
         <textarea
-          id="rf-instructions"
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          rows={8}
-          placeholder="Step-by-step instructions…"
+          id="rf-mise-en-place"
+          value={miseEnPlace}
+          onChange={(e) => setMiseEnPlace(e.target.value)}
+          rows={4}
+          placeholder={"Preheat oven to 180°C\nDice the onion\nMeasure out the flour…"}
           className={inputClass}
         />
+        <p className="font-sans text-xs text-neutral-400 mt-1">One preparation step per line.</p>
+      </div>
+
+      <div>
+        <label htmlFor="rf-steps" className={labelClass}>Cooking Steps</label>
+        <textarea
+          id="rf-steps"
+          value={steps}
+          onChange={(e) => setSteps(e.target.value)}
+          rows={8}
+          placeholder={"Heat oil in a large pan over medium heat\nAdd onion and cook until softened…"}
+          className={inputClass}
+        />
+        <p className="font-sans text-xs text-neutral-400 mt-1">One step per line. Steps are numbered automatically.</p>
       </div>
 
       <div>

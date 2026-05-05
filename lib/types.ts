@@ -13,6 +13,12 @@ export interface Ingredient {
   substitutions: string[]
 }
 
+/** Structured instructions split into preparation and cooking steps. */
+export interface StructuredInstructions {
+  mise_en_place: string[]
+  steps: string[]
+}
+
 /** A recipe record as stored in and returned from the database. */
 export interface Recipe {
   id: string

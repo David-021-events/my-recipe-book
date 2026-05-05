@@ -36,7 +36,8 @@ export default function NewRecipePage() {
   // Editable preview fields
   const [title, setTitle] = useState('')
   const [servings, setServings] = useState('4')
-  const [instructions, setInstructions] = useState('')
+  const [miseEnPlace, setMiseEnPlace] = useState('')
+  const [steps, setSteps] = useState('')
   const [ingredients, setIngredients] = useState<IngredientRow[]>([])
   const [status, setStatus] = useState<'draft' | 'published'>('draft')
 
@@ -44,7 +45,14 @@ export default function NewRecipePage() {
     setPreview(recipe)
     setTitle(recipe.title)
     setServings(String(recipe.servings))
-    setInstructions(recipe.instructions)
+    try {
+      const parsed = JSON.parse(recipe.instructions)
+      setMiseEnPlace((parsed?.mise_en_place as string[] | undefined)?.join('\n') ?? '')
+      setSteps((parsed?.steps as string[] | undefined)?.join('\n') ?? '')
+    } catch {
+      setMiseEnPlace('')
+      setSteps(recipe.instructions)
+    }
     setIngredients(
       recipe.ingredients.map((i) => ({
         name: i.name,
@@ -139,7 +147,12 @@ export default function NewRecipePage() {
     const body = {
       title,
       servings: parseInt(servings, 10) || 4,
-      instructions: instructions || null,
+      instructions: (() => {
+        const mep = miseEnPlace.split('\n').map((s) => s.trim()).filter(Boolean)
+        const st = steps.split('\n').map((s) => s.trim()).filter(Boolean)
+        if (mep.length === 0 && st.length === 0) return null
+        return JSON.stringify({ mise_en_place: mep, steps: st })
+      })(),
       status,
       raw_input: text || null,
       ingredients: ingredients.map((row) => ({
@@ -274,7 +287,8 @@ export default function NewRecipePage() {
             <button
               onClick={() => {
                 setPreview({ title, servings: parseInt(servings, 10) || 4, instructions: fallbackText, ingredients: [] })
-                setInstructions(fallbackText)
+                setMiseEnPlace('')
+                setSteps(fallbackText)
               }}
               className="bg-brand-500 hover:bg-brand-600 text-white font-sans font-semibold text-sm px-5 py-2.5 rounded-md transition-colors min-h-[44px]"
             >
@@ -355,14 +369,29 @@ export default function NewRecipePage() {
           </div>
 
           <div>
-            <label htmlFor="p-instructions" className={labelClass}>Instructions</label>
+            <label htmlFor="p-mise-en-place" className={labelClass}>Mise en Place</label>
             <textarea
-              id="p-instructions"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              rows={8}
+              id="p-mise-en-place"
+              value={miseEnPlace}
+              onChange={(e) => setMiseEnPlace(e.target.value)}
+              rows={4}
+              placeholder={"Preheat oven to 180°C\nDice the onion…"}
               className={inputClass}
             />
+            <p className="font-sans text-xs text-neutral-400 mt-1">One preparation step per line.</p>
+          </div>
+
+          <div>
+            <label htmlFor="p-steps" className={labelClass}>Cooking Steps</label>
+            <textarea
+              id="p-steps"
+              value={steps}
+              onChange={(e) => setSteps(e.target.value)}
+              rows={8}
+              placeholder={"Heat oil in a large pan over medium heat\nAdd onion and cook until softened…"}
+              className={inputClass}
+            />
+            <p className="font-sans text-xs text-neutral-400 mt-1">One step per line. Steps are numbered automatically.</p>
           </div>
 
           {saveError && <p className="font-sans text-sm text-red-600">{saveError}</p>}
