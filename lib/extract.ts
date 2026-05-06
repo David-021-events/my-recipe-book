@@ -9,6 +9,8 @@ Return this structure:
 {
   "title": string,
   "servings": number,
+  "prep_time": number | null,
+  "cook_time": number | null,
   "ingredients": [
     {
       "name": string,
@@ -26,6 +28,8 @@ Return this structure:
 
 Rules:
 - Return ONLY JSON. No markdown, no code fences, no explanation.
+- prep_time: total preparation time in minutes (chopping, measuring, etc.). null if not stated.
+- cook_time: total active cooking or baking time in minutes. null if not stated.
 - hard_to_find is true only for ingredients unlikely to be in a standard Western pantry.
 - substitutions: max 2 common alternatives, only populate if hard_to_find is true.
 - unit must be one of: tsp, tbsp, cup, oz, lb, ml, g, kg, clove, pinch, count.
@@ -38,6 +42,8 @@ Rules:
 const RecipeExtractedSchema = z.object({
   title: z.string(),
   servings: z.number(),
+  prep_time: z.number().nullable().optional(),
+  cook_time: z.number().nullable().optional(),
   ingredients: z.array(
     z.object({
       name: z.string(),

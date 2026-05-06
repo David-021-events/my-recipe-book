@@ -36,6 +36,8 @@ export default function NewRecipePage() {
   // Editable preview fields
   const [title, setTitle] = useState('')
   const [servings, setServings] = useState('4')
+  const [prepTime, setPrepTime] = useState('')
+  const [cookTime, setCookTime] = useState('')
   const [miseEnPlace, setMiseEnPlace] = useState('')
   const [steps, setSteps] = useState('')
   const [ingredients, setIngredients] = useState<IngredientRow[]>([])
@@ -45,6 +47,8 @@ export default function NewRecipePage() {
     setPreview(recipe)
     setTitle(recipe.title)
     setServings(String(recipe.servings))
+    setPrepTime(recipe.prep_time != null ? String(recipe.prep_time) : '')
+    setCookTime(recipe.cook_time != null ? String(recipe.cook_time) : '')
     try {
       const parsed = JSON.parse(recipe.instructions)
       setMiseEnPlace((parsed?.mise_en_place as string[] | undefined)?.join('\n') ?? '')
@@ -167,6 +171,8 @@ export default function NewRecipePage() {
     const body = {
       title,
       servings: parseInt(servings, 10) || 4,
+      prep_time: prepTime ? parseInt(prepTime, 10) : null,
+      cook_time: cookTime ? parseInt(cookTime, 10) : null,
       instructions: (() => {
         const mep = miseEnPlace.split('\n').map((s) => s.trim()).filter(Boolean)
         const st = steps.split('\n').map((s) => s.trim()).filter(Boolean)
@@ -339,6 +345,17 @@ export default function NewRecipePage() {
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="p-prep-time" className={labelClass}>Prep time (min)</label>
+              <input id="p-prep-time" type="number" value={prepTime} onChange={(e) => setPrepTime(e.target.value)} min={1} placeholder="—" className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor="p-cook-time" className={labelClass}>Cook time (min)</label>
+              <input id="p-cook-time" type="number" value={cookTime} onChange={(e) => setCookTime(e.target.value)} min={1} placeholder="—" className={inputClass} />
             </div>
           </div>
 
