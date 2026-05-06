@@ -33,7 +33,7 @@ Rules:
 - Map all unit variants to the list above (e.g. tablespoon / T / Tbs → tbsp).
 - If quantity or unit cannot be determined, use null.
 - instructions.mise_en_place: preparation steps only (pre-heat, measure, dice, soak). Empty array if none.
-- instructions.steps: numbered cooking steps in order. Each step is one complete action.`
+- instructions.steps: cooking steps in order. Each step is one complete action. Do NOT include step numbers in the text.`
 
 const RecipeExtractedSchema = z.object({
   title: z.string(),

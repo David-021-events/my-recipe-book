@@ -175,7 +175,7 @@ export default function RecipeDetail({ recipe }: Props) {
                     {structured.steps.map((step, i) => (
                       <li key={i} className="flex gap-4 font-sans text-base leading-relaxed text-neutral-700">
                         <span className="font-semibold text-brand-500 shrink-0 min-w-[1.5rem] text-right">{i + 1}.</span>
-                        <span>{step}</span>
+                        <span>{step.replace(/^\d+[\.\)]\s*/, '')}</span>
                       </li>
                     ))}
                   </ol>
