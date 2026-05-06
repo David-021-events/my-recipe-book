@@ -66,7 +66,8 @@ const RecipeExtractedSchema = z.object({
 /** The validated, structured recipe data produced by the Claude extraction pipeline. */
 export type RecipeExtracted = z.infer<typeof RecipeExtractedSchema>
 
-type ExtractionInput =
+/** Discriminated union of inputs accepted by {@link extractRecipe}: plain text, base64 image, or URL. */
+export type ExtractionInput =
   | { type: 'text'; text: string }
   | { type: 'image'; data: string; mediaType: 'image/jpeg' | 'image/png' }
   | { type: 'url'; url: string }

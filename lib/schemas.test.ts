@@ -82,4 +82,28 @@ describe('RecipeInputSchema', () => {
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.servings).toBe(4)
   })
+
+  it('accepts valid prep_time and cook_time', () => {
+    const result = RecipeInputSchema.safeParse({ ...validRecipe, prep_time: 15, cook_time: 30 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.prep_time).toBe(15)
+      expect(result.data.cook_time).toBe(30)
+    }
+  })
+
+  it('accepts null prep_time and cook_time', () => {
+    const result = RecipeInputSchema.safeParse({ ...validRecipe, prep_time: null, cook_time: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects non-positive prep_time', () => {
+    expect(RecipeInputSchema.safeParse({ ...validRecipe, prep_time: 0 }).success).toBe(false)
+    expect(RecipeInputSchema.safeParse({ ...validRecipe, prep_time: -5 }).success).toBe(false)
+  })
+
+  it('rejects non-positive cook_time', () => {
+    expect(RecipeInputSchema.safeParse({ ...validRecipe, cook_time: 0 }).success).toBe(false)
+    expect(RecipeInputSchema.safeParse({ ...validRecipe, cook_time: -1 }).success).toBe(false)
+  })
 })

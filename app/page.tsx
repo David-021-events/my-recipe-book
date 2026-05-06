@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Public homepage — grid of published recipes.
- * Uses the public Supabase client so RLS enforces published-only access.
+ * Uses the admin Supabase client server-side to bypass RLS; the .eq('status', 'published')
+ * filter ensures only published recipes are returned.
  */
 export default async function Home() {
   const { data: recipes } = await supabaseAdmin
