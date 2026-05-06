@@ -1,12 +1,14 @@
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import RecipeCard from '@/components/RecipeCard'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * Public homepage — grid of published recipes.
  * Uses the public Supabase client so RLS enforces published-only access.
  */
 export default async function Home() {
-  const { data: recipes } = await supabase
+  const { data: recipes } = await supabaseAdmin
     .from('recipes')
     .select('id, title, servings')
     .eq('status', 'published')
