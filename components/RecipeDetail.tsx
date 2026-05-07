@@ -9,6 +9,22 @@ interface Props {
   recipe: Recipe
 }
 
+function formatTime(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`
+  const days = Math.floor(minutes / 1440)
+  const remainingMins = minutes % 1440
+  const hours = Math.floor(remainingMins / 60)
+  const mins = remainingMins % 60
+  if (days > 0) {
+    const parts = [`${days} day${days > 1 ? 's' : ''}`]
+    if (hours > 0) parts.push(`${hours} hr`)
+    return parts.join(' ')
+  }
+  const parts = [`${hours} hr`]
+  if (mins > 0) parts.push(`${mins} min`)
+  return parts.join(' ')
+}
+
 function parseInstructions(raw: string | null): StructuredInstructions | null {
   if (!raw) return null
   try {
@@ -65,12 +81,12 @@ export default function RecipeDetail({ recipe }: Props) {
           </span>
           {recipe.prep_time && (
             <span className="font-sans text-[0.8125rem] text-neutral-500">
-              {recipe.prep_time} min prep
+              {formatTime(recipe.prep_time)} prep
             </span>
           )}
           {recipe.cook_time && (
             <span className="font-sans text-[0.8125rem] text-neutral-500">
-              {recipe.cook_time} min cook
+              {formatTime(recipe.cook_time)} cook
             </span>
           )}
 
