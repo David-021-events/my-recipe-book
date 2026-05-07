@@ -104,7 +104,7 @@ export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl
       })
       if (res.ok) {
         const data = await res.json() as { image_url: string }
-        setCurrentImageUrl(data.image_url)
+        setCurrentImageUrl(`${data.image_url}?t=${Date.now()}`)
       }
     } finally {
       setImageUploading(false)
