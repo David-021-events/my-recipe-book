@@ -42,6 +42,9 @@ export default function NewRecipePage() {
   const [steps, setSteps] = useState('')
   const [ingredients, setIngredients] = useState<IngredientRow[]>([])
   const [status, setStatus] = useState<'draft' | 'published'>('draft')
+  const [autoImageUrl, setAutoImageUrl] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
 
   function loadPreview(recipe: RecipeExtracted) {
     setPreview(recipe)
@@ -122,6 +125,7 @@ export default function NewRecipePage() {
 
     if (data.success) {
       loadPreview(data.recipe as RecipeExtracted)
+      if (data.image_url) setAutoImageUrl(data.image_url as string)
     }
   }
 
@@ -164,6 +168,19 @@ export default function NewRecipePage() {
     setIngredients((prev) => prev.filter((_, idx) => idx !== i))
   }
 
+  function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreviewUrl(URL.createObjectURL(file))
+  }
+
+  function handleImageClear() {
+    setImageFile(null)
+    setImagePreviewUrl(null)
+    setAutoImageUrl(null)
+  }
+
   async function handleSave() {
     setSaving(true)
     setSaveError('')
@@ -181,6 +198,7 @@ export default function NewRecipePage() {
       })(),
       status,
       raw_input: text || null,
+      image_url: imageFile ? null : autoImageUrl,
       ingredients: ingredients.map((row) => ({
         name: row.name,
         quantity: row.quantity ? parseFloat(row.quantity) : null,
@@ -196,14 +214,25 @@ export default function NewRecipePage() {
       body: JSON.stringify(body),
     })
 
-    if (res.ok) {
-      router.refresh()
-      router.push('/admin')
-    } else {
+    if (!res.ok) {
       const json = await res.json()
       setSaveError(json.error ?? 'Failed to save.')
       setSaving(false)
+      return
     }
+
+    const saved = await res.json() as { id: string }
+    if (imageFile) {
+      const base64 = await compressImage(imageFile)
+      await fetch(`/api/recipes/${saved.id}/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64 }),
+      })
+    }
+
+    router.refresh()
+    router.push('/admin')
   }
 
   const inputClass =
@@ -330,6 +359,29 @@ export default function NewRecipePage() {
       {preview && (
         <div className="bg-white rounded-lg border border-neutral-200 p-6 space-y-5">
           <div>
+            <p className={labelClass}>Recipe Image</p>
+            {(imagePreviewUrl ?? autoImageUrl) ? (
+              <div className="space-y-2">
+                <img src={imagePreviewUrl ?? autoImageUrl!} alt="Recipe preview" className="w-full max-h-48 object-cover rounded-md" />
+                <div className="flex gap-4">
+                  <label className="font-sans text-sm text-brand-500 hover:text-brand-600 cursor-pointer">
+                    Replace
+                    <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={handleImageFileChange} />
+                  </label>
+                  <button type="button" onClick={handleImageClear} className="font-sans text-sm text-red-500 hover:text-red-700">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="font-sans text-sm text-brand-500 hover:text-brand-600 cursor-pointer">
+                + Add image
+                <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={handleImageFileChange} />
+              </label>
+            )}
+          </div>
+
+          <div>
             <label htmlFor="p-title" className={labelClass}>Title</label>
             <input id="p-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className={inputClass} />
           </div>
@@ -437,7 +489,7 @@ export default function NewRecipePage() {
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              onClick={() => { setPreview(null); setFallbackText('') }}
+              onClick={() => { setPreview(null); setFallbackText(''); setAutoImageUrl(null); setImageFile(null); setImagePreviewUrl(null) }}
               className="border border-brand-200 text-neutral-700 hover:bg-brand-100 font-sans font-semibold text-sm px-5 py-2.5 rounded-md transition-colors min-h-[44px]"
             >
               Back

@@ -46,6 +46,12 @@ export default function RecipeDetail({ recipe }: Props) {
         </div>
       </nav>
 
+      {recipe.image_url && (
+        <div className="w-full max-h-96 overflow-hidden">
+          <img src={recipe.image_url} alt={recipe.title} className="w-full h-96 object-cover" />
+        </div>
+      )}
+
       <main className="max-w-3xl mx-auto px-4 py-10">
         {/* Title */}
         <h1 className="font-display text-4xl font-bold leading-tight text-neutral-900">

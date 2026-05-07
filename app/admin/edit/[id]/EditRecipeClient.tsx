@@ -65,6 +65,8 @@ export default function EditRecipeClient({ recipe }: Props) {
         }}
         onSave={handleSave}
         saving={saving}
+        recipeId={recipe.id}
+        imageUrl={recipe.image_url}
       />
       <div className="mt-6 pt-6 border-t border-neutral-200">
         <button

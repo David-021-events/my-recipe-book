@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Ingredient } from '@/lib/types'
+import { compressImage } from '@/lib/compress'
 
 /**
  * Shape of the data collected by RecipeForm and passed to the onSave callback.
@@ -30,6 +31,8 @@ interface Props {
   initial?: Partial<RecipeFormData>
   onSave: (data: RecipeFormData) => void
   saving: boolean
+  recipeId: string
+  imageUrl?: string | null
 }
 
 const UNITS = ['tsp', 'tbsp', 'cup', 'oz', 'lb', 'ml', 'g', 'kg', 'clove', 'pinch', 'count']
@@ -49,7 +52,9 @@ function toRows(ingredients: Ingredient[] | null | undefined): IngredientRow[] {
  * Shared recipe form used by the edit admin page.
  * Uses a per-row ingredient editor instead of raw JSON.
  */
-export default function RecipeForm({ initial, onSave, saving }: Props) {
+export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl: initialImageUrl }: Props) {
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(initialImageUrl ?? null)
+  const [imageUploading, setImageUploading] = useState(false)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [servings, setServings] = useState(String(initial?.servings ?? 4))
   const [prepTime, setPrepTime] = useState(String(initial?.prep_time ?? ''))
@@ -86,6 +91,31 @@ export default function RecipeForm({ initial, onSave, saving }: Props) {
     setIngredients((prev) => prev.filter((_, idx) => idx !== i))
   }
 
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageUploading(true)
+    try {
+      const base64 = await compressImage(file)
+      const res = await fetch(`/api/recipes/${recipeId}/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64 }),
+      })
+      if (res.ok) {
+        const data = await res.json() as { image_url: string }
+        setCurrentImageUrl(data.image_url)
+      }
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  async function handleImageRemove() {
+    await fetch(`/api/recipes/${recipeId}/image`, { method: 'DELETE' })
+    setCurrentImageUrl(null)
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     onSave({
@@ -117,6 +147,29 @@ export default function RecipeForm({ initial, onSave, saving }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-neutral-200 p-6 space-y-5">
+      <div>
+        <p className={labelClass}>Recipe Image</p>
+        {currentImageUrl ? (
+          <div className="space-y-2">
+            <img src={currentImageUrl} alt="Recipe" className="w-full max-h-48 object-cover rounded-md" />
+            <div className="flex gap-4">
+              <label className="font-sans text-sm text-brand-500 hover:text-brand-600 cursor-pointer">
+                {imageUploading ? 'Uploading…' : 'Replace'}
+                <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={handleImageChange} disabled={imageUploading} />
+              </label>
+              <button type="button" onClick={handleImageRemove} className="font-sans text-sm text-red-500 hover:text-red-700">
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label className="font-sans text-sm text-brand-500 hover:text-brand-600 cursor-pointer">
+            {imageUploading ? 'Uploading…' : '+ Add image'}
+            <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={handleImageChange} disabled={imageUploading} />
+          </label>
+        )}
+      </div>
+
       <div>
         <label htmlFor="rf-title" className={labelClass}>Title</label>
         <input

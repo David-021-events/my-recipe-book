@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function Home() {
   const { data: recipes } = await supabaseAdmin
     .from('recipes')
-    .select('id, title, servings')
+    .select('id, title, servings, image_url')
     .eq('status', 'published')
     .order('created_at', { ascending: false })
 
@@ -38,6 +38,7 @@ export default async function Home() {
                 id={recipe.id}
                 title={recipe.title}
                 servings={recipe.servings}
+                image_url={recipe.image_url}
               />
             ))}
           </div>

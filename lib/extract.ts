@@ -74,12 +74,12 @@ export type ExtractionInput =
 
 /**
  * Discriminated union returned by {@link extractRecipe}.
- * - `success: true` — structured recipe was extracted and validated.
+ * - `success: true` — structured recipe was extracted and validated. `image_url` is set when a URL was pasted and the page had an `og:image` tag.
  * - `success: false, fallback: true` — Claude responded but JSON was invalid; raw text is preserved.
  * - `success: false, error: 'url_fetch_failed'` — the provided URL could not be fetched.
  */
 export type ExtractionResult =
-  | { success: true; recipe: RecipeExtracted }
+  | { success: true; recipe: RecipeExtracted; image_url?: string | null }
   | { success: false; fallback: true; rawText: string }
   | { success: false; fallback?: false; error: 'url_fetch_failed' }
 
@@ -132,6 +132,8 @@ function parseAndValidate(raw: string): RecipeExtracted | null {
 export async function extractRecipe(input: ExtractionInput): Promise<ExtractionResult> {
   let resolvedInput: ExtractionInput & { type: 'text' | 'image' }
 
+  let extractedImageUrl: string | null = null
+
   if (input.type === 'url') {
     try {
       const controller = new AbortController()
@@ -143,6 +145,9 @@ export async function extractRecipe(input: ExtractionInput): Promise<ExtractionR
       clearTimeout(timeout)
       if (!res.ok) return { success: false, error: 'url_fetch_failed' }
       const html = await res.text()
+      const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+        ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+      extractedImageUrl = ogMatch?.[1] ?? null
       const text = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
@@ -160,12 +165,12 @@ export async function extractRecipe(input: ExtractionInput): Promise<ExtractionR
 
   const firstResponse = await callClaude(resolvedInput)
   const firstResult = parseAndValidate(firstResponse)
-  if (firstResult) return { success: true, recipe: firstResult }
+  if (firstResult) return { success: true, recipe: firstResult, image_url: extractedImageUrl }
 
   // Retry once
   const secondResponse = await callClaude(resolvedInput)
   const secondResult = parseAndValidate(secondResponse)
-  if (secondResult) return { success: true, recipe: secondResult }
+  if (secondResult) return { success: true, recipe: secondResult, image_url: extractedImageUrl }
 
   return { success: false, fallback: true, rawText: secondResponse }
 }
