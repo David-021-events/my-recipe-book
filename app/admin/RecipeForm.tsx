@@ -2,13 +2,26 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { Ingredient } from '@/lib/types'
 import { compressImage } from '@/lib/compress'
 
-/**
- * Shape of the data collected by RecipeForm and passed to the onSave callback.
- * Mirrors the writable columns of the recipes table.
- */
 export interface RecipeFormData {
   title: string
   servings: number
@@ -21,6 +34,7 @@ export interface RecipeFormData {
 }
 
 interface IngredientRow {
+  id: string
   name: string
   quantity: string
   unit: string
@@ -41,6 +55,7 @@ const UNITS = ['tsp', 'tbsp', 'cup', 'oz', 'lb', 'ml', 'g', 'kg', 'clove', 'pinc
 function toRows(ingredients: Ingredient[] | null | undefined): IngredientRow[] {
   if (!ingredients) return []
   return ingredients.map((i) => ({
+    id: crypto.randomUUID(),
     name: i.name,
     quantity: i.quantity != null ? String(i.quantity) : '',
     unit: i.unit ?? '',
@@ -49,9 +64,85 @@ function toRows(ingredients: Ingredient[] | null | undefined): IngredientRow[] {
   }))
 }
 
+function GripIcon() {
+  return (
+    <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+      <circle cx="2" cy="2" r="1.5" />
+      <circle cx="8" cy="2" r="1.5" />
+      <circle cx="2" cy="8" r="1.5" />
+      <circle cx="8" cy="8" r="1.5" />
+      <circle cx="2" cy="14" r="1.5" />
+      <circle cx="8" cy="14" r="1.5" />
+    </svg>
+  )
+}
+
+interface SortableRowProps {
+  row: IngredientRow
+  index: number
+  onUpdate: (i: number, field: keyof IngredientRow, value: string | boolean) => void
+  onRemove: (i: number) => void
+}
+
+function SortableIngredientRow({ row, index, onUpdate, onRemove }: SortableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className="flex items-center gap-2"
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-500 px-1 touch-none shrink-0"
+        aria-label="Drag to reorder"
+      >
+        <GripIcon />
+      </button>
+      <input
+        type="text"
+        value={row.quantity}
+        onChange={(e) => onUpdate(index, 'quantity', e.target.value)}
+        placeholder="Qty"
+        className="w-16 border border-neutral-200 rounded-md px-2 py-2 font-sans text-sm text-neutral-900"
+      />
+      <select
+        value={row.unit}
+        onChange={(e) => onUpdate(index, 'unit', e.target.value)}
+        className="border border-neutral-200 rounded-md px-2 py-2 font-sans text-sm text-neutral-900 bg-white"
+      >
+        <option value="">—</option>
+        {UNITS.map((u) => (
+          <option key={u} value={u}>{u}</option>
+        ))}
+      </select>
+      <input
+        type="text"
+        value={row.name}
+        onChange={(e) => onUpdate(index, 'name', e.target.value)}
+        placeholder="Ingredient name"
+        className="flex-1 border border-neutral-200 rounded-md px-3 py-2 font-sans text-sm text-neutral-900"
+      />
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        className="font-sans text-sm text-red-500 hover:text-red-700 px-1 shrink-0"
+        aria-label="Remove ingredient"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
 /**
  * Shared recipe form used by the edit admin page.
- * Uses a per-row ingredient editor instead of raw JSON.
+ * Ingredients support drag-and-drop reordering via @dnd-kit.
  */
 export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl: initialImageUrl }: Props) {
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(initialImageUrl ?? null)
@@ -77,6 +168,22 @@ export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl
   )
   const [status, setStatus] = useState<'draft' | 'published'>(initial?.status ?? 'draft')
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setIngredients((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
   function updateIngredient(i: number, field: keyof IngredientRow, value: string | boolean) {
     setIngredients((prev) => prev.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)))
   }
@@ -84,7 +191,7 @@ export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl
   function addIngredient() {
     setIngredients((prev) => [
       ...prev,
-      { name: '', quantity: '', unit: '', hard_to_find: false, substitutions: [] },
+      { id: crypto.randomUUID(), name: '', quantity: '', unit: '', hard_to_find: false, substitutions: [] },
     ])
   }
 
@@ -189,86 +296,36 @@ export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label htmlFor="rf-servings" className={labelClass}>Servings</label>
-          <input
-            id="rf-servings"
-            type="number"
-            value={servings}
-            onChange={(e) => setServings(e.target.value)}
-            min={1}
-            className={inputClass}
-          />
+          <input id="rf-servings" type="number" value={servings} onChange={(e) => setServings(e.target.value)} min={1} className={inputClass} />
         </div>
         <div>
           <label htmlFor="rf-prep-time" className={labelClass}>Prep time (min)</label>
-          <input
-            id="rf-prep-time"
-            type="number"
-            value={prepTime}
-            onChange={(e) => setPrepTime(e.target.value)}
-            min={1}
-            placeholder="—"
-            className={inputClass}
-          />
+          <input id="rf-prep-time" type="number" value={prepTime} onChange={(e) => setPrepTime(e.target.value)} min={1} placeholder="—" className={inputClass} />
         </div>
         <div>
           <label htmlFor="rf-cook-time" className={labelClass}>Cook time (min)</label>
-          <input
-            id="rf-cook-time"
-            type="number"
-            value={cookTime}
-            onChange={(e) => setCookTime(e.target.value)}
-            min={1}
-            placeholder="—"
-            className={inputClass}
-          />
+          <input id="rf-cook-time" type="number" value={cookTime} onChange={(e) => setCookTime(e.target.value)} min={1} placeholder="—" className={inputClass} />
         </div>
       </div>
 
       <div>
         <p className={labelClass}>Ingredients</p>
-        <div className="space-y-2">
-          {ingredients.map((row, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={row.quantity}
-                onChange={(e) => updateIngredient(i, 'quantity', e.target.value)}
-                placeholder="Qty"
-                className="w-16 border border-neutral-200 rounded-md px-2 py-2 font-sans text-sm text-neutral-900"
-              />
-              <select
-                value={row.unit}
-                onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
-                className="border border-neutral-200 rounded-md px-2 py-2 font-sans text-sm text-neutral-900 bg-white"
-              >
-                <option value="">—</option>
-                {UNITS.map((u) => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={row.name}
-                onChange={(e) => updateIngredient(i, 'name', e.target.value)}
-                placeholder="Ingredient name"
-                className="flex-1 border border-neutral-200 rounded-md px-3 py-2 font-sans text-sm text-neutral-900"
-              />
-              <button
-                type="button"
-                onClick={() => removeIngredient(i)}
-                className="font-sans text-sm text-red-500 hover:text-red-700 px-1"
-                aria-label="Remove ingredient"
-              >
-                ✕
-              </button>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={ingredients.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {ingredients.map((row, i) => (
+                <SortableIngredientRow
+                  key={row.id}
+                  row={row}
+                  index={i}
+                  onUpdate={updateIngredient}
+                  onRemove={removeIngredient}
+                />
+              ))}
             </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={addIngredient}
-          className="mt-2 font-sans text-sm text-brand-500 hover:text-brand-600"
-        >
+          </SortableContext>
+        </DndContext>
+        <button type="button" onClick={addIngredient} className="mt-2 font-sans text-sm text-brand-500 hover:text-brand-600">
           + Add ingredient
         </button>
       </div>
@@ -301,12 +358,7 @@ export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl
 
       <div>
         <label htmlFor="rf-status" className={labelClass}>Status</label>
-        <select
-          id="rf-status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value as 'draft' | 'published')}
-          className={inputClass}
-        >
+        <select id="rf-status" value={status} onChange={(e) => setStatus(e.target.value as 'draft' | 'published')} className={inputClass}>
           <option value="draft">Draft</option>
           <option value="published">Published</option>
         </select>
