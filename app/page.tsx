@@ -14,7 +14,7 @@ export default async function Home() {
   const [{ data: recipes }, isAdmin] = await Promise.all([
     supabaseAdmin
       .from('recipes')
-      .select('id, title, servings, image_url')
+      .select('id, title, servings, image_url, slug')
       .eq('status', 'published')
       .order('created_at', { ascending: false }),
     getAdminSessionServer(),
@@ -48,7 +48,7 @@ export default async function Home() {
             {recipes.map((recipe) => (
               <RecipeCard
                 key={recipe.id}
-                id={recipe.id}
+                slug={recipe.slug}
                 title={recipe.title}
                 servings={recipe.servings}
                 image_url={recipe.image_url}

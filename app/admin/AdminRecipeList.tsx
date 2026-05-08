@@ -2,7 +2,7 @@
 
 import type { Recipe } from '@/lib/types'
 
-type RecipeSummary = Pick<Recipe, 'id' | 'title' | 'status' | 'created_at' | 'servings'>
+type RecipeSummary = Pick<Recipe, 'id' | 'title' | 'status' | 'created_at' | 'servings' | 'slug'>
 
 interface Props {
   recipes: RecipeSummary[]
@@ -74,7 +74,7 @@ export default function AdminRecipeList({ recipes }: Props) {
               <td className="px-6 py-4 text-right space-x-4">
                 {recipe.status === 'published' && (
                   <a
-                    href={`/recipes/${recipe.id}`}
+                    href={`/recipes/${recipe.slug}`}
                     className="font-sans text-sm text-neutral-500 hover:text-neutral-700"
                   >
                     View

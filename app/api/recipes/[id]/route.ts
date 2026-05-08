@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { getAdminSession } from '@/lib/auth'
 import { RecipeInputSchema } from '@/lib/schemas'
+import { slugify } from '@/lib/slugify'
 
 /**
  * GET /api/recipes/[id] — Returns a single published recipe by ID.
- * @param _request - Unused request object.
- * @param params - Route params containing the recipe `id`.
  */
 export async function GET(
   _request: NextRequest,
@@ -26,8 +25,6 @@ export async function GET(
 
 /**
  * PUT /api/recipes/[id] — Replaces a recipe. Requires a valid admin session cookie.
- * @param request - The incoming request containing the updated recipe JSON body.
- * @param params - Route params containing the recipe `id`.
  */
 export async function PUT(
   request: NextRequest,
@@ -44,9 +41,11 @@ export async function PUT(
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
+  const slug = await uniqueSlug(parsed.data.title, id)
+
   const { data, error } = await supabaseAdmin
     .from('recipes')
-    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .update({ ...parsed.data, slug, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
@@ -57,8 +56,6 @@ export async function PUT(
 
 /**
  * DELETE /api/recipes/[id] — Deletes a recipe. Requires a valid admin session cookie.
- * @param request - The incoming request (used to verify the admin session).
- * @param params - Route params containing the recipe `id`.
  */
 export async function DELETE(
   request: NextRequest,
@@ -76,4 +73,18 @@ export async function DELETE(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return new NextResponse(null, { status: 204 })
+}
+
+async function uniqueSlug(title: string, excludeId?: string): Promise<string> {
+  const base = slugify(title)
+  const query = supabaseAdmin.from('recipes').select('slug').like('slug', `${base}%`)
+  if (excludeId) query.neq('id', excludeId)
+  const { data } = await query
+  const existing = new Set(data?.map((r) => r.slug) ?? [])
+  let candidate = base
+  let i = 2
+  while (existing.has(candidate)) {
+    candidate = `${base}-${i++}`
+  }
+  return candidate
 }

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function AdminPage() {
   const { data, error } = await supabaseAdmin
     .from('recipes')
-    .select('id, title, status, created_at, servings')
+    .select('id, title, status, created_at, servings, slug')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -33,7 +33,7 @@ export default async function AdminPage() {
           Add Recipe
         </a>
       </div>
-      <AdminRecipeList recipes={(data ?? []) as Pick<Recipe, 'id' | 'title' | 'status' | 'created_at' | 'servings'>[]} />
+      <AdminRecipeList recipes={(data ?? []) as Pick<Recipe, 'id' | 'title' | 'status' | 'created_at' | 'servings' | 'slug'>[]} />
     </div>
   )
 }

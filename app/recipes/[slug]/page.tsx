@@ -4,20 +4,20 @@ import type { Recipe } from '@/lib/types'
 import RecipeDetail from '@/components/RecipeDetail'
 
 /**
- * Public recipe detail page — server component that fetches a published recipe by ID.
+ * Public recipe detail page — fetches a published recipe by slug.
  * Returns 404 for drafts and missing recipes.
  */
 export default async function RecipePage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const { id } = await params
+  const { slug } = await params
 
   const { data, error } = await supabase
     .from('recipes')
     .select('*')
-    .eq('id', id)
+    .eq('slug', slug)
     .eq('status', 'published')
     .single()
 

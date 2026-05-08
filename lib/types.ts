@@ -23,6 +23,7 @@ export interface StructuredInstructions {
 export interface Recipe {
   id: string
   title: string
+  slug: string
   raw_input: string | null
   instructions: string | null
   ingredients: Ingredient[] | null
