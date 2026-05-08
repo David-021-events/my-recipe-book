@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { compressImage } from '@/lib/compress'
 import type { RecipeExtracted } from '@/lib/extract'
@@ -362,7 +363,9 @@ export default function NewRecipePage() {
             <p className={labelClass}>Recipe Image</p>
             {(imagePreviewUrl ?? autoImageUrl) ? (
               <div className="space-y-2">
-                <img src={imagePreviewUrl ?? autoImageUrl!} alt="Recipe preview" className="w-full max-h-48 object-cover rounded-md" />
+                <div className="relative w-full h-48 rounded-md overflow-hidden">
+                  <Image src={imagePreviewUrl ?? autoImageUrl!} alt="Recipe preview" fill unoptimized sizes="(max-width: 768px) 100vw, 672px" className="object-cover" />
+                </div>
                 <div className="flex gap-4">
                   <label className="font-sans text-sm text-brand-500 hover:text-brand-600 cursor-pointer">
                     Replace

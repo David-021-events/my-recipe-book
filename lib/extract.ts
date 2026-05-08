@@ -50,7 +50,8 @@ const RecipeExtractedSchema = z.object({
       quantity: z.number().nullable(),
       unit: z
         .enum(['tsp', 'tbsp', 'cup', 'oz', 'lb', 'ml', 'g', 'kg', 'clove', 'pinch', 'count'])
-        .nullable(),
+        .nullable()
+        .catch(null),
       hard_to_find: z.boolean(),
       substitutions: z.array(z.string()).max(2),
     })

@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
 interface Props {
@@ -18,7 +19,9 @@ export default function RecipeCard({ id, title, servings, image_url }: Props) {
       className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden block"
     >
       {image_url ? (
-        <img src={image_url} alt={title} className="w-full aspect-video object-cover" />
+        <div className="relative w-full aspect-video">
+          <Image src={image_url} alt={title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
+        </div>
       ) : (
         <div className="w-full aspect-video bg-brand-100 flex items-center justify-center">
           <span className="font-display italic text-brand-300 text-2xl">{title[0]}</span>

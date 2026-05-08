@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import type { Ingredient } from '@/lib/types'
 import { compressImage } from '@/lib/compress'
 
@@ -151,7 +152,9 @@ export default function RecipeForm({ initial, onSave, saving, recipeId, imageUrl
         <p className={labelClass}>Recipe Image</p>
         {currentImageUrl ? (
           <div className="space-y-2">
-            <img src={currentImageUrl} alt="Recipe" className="w-full max-h-48 object-cover rounded-md" />
+            <div className="relative w-full h-48 rounded-md overflow-hidden">
+              <Image src={currentImageUrl} alt="Recipe" fill sizes="(max-width: 768px) 100vw, 672px" className="object-cover" />
+            </div>
             <div className="flex gap-4">
               <label className="font-sans text-sm text-brand-500 hover:text-brand-600 cursor-pointer">
                 {imageUploading ? 'Uploading…' : 'Replace'}

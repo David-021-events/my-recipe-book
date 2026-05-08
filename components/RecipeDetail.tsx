@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { convertIngredient } from '@/lib/convert'
 import type { Recipe, StructuredInstructions } from '@/lib/types'
@@ -63,8 +64,8 @@ export default function RecipeDetail({ recipe }: Props) {
       </nav>
 
       {recipe.image_url && (
-        <div className="w-full max-h-96 overflow-hidden">
-          <img src={recipe.image_url} alt={recipe.title} className="w-full h-96 object-cover" />
+        <div className="relative w-full h-96 overflow-hidden">
+          <Image src={recipe.image_url} alt={recipe.title} fill sizes="100vw" className="object-cover" />
         </div>
       )}
 
