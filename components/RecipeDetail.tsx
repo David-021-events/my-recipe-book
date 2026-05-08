@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { convertIngredient } from '@/lib/convert'
 import type { Recipe, StructuredInstructions } from '@/lib/types'
+import { parseStepTime } from '@/lib/parse-time'
+import StepTimer from '@/components/StepTimer'
 
 interface Props {
   recipe: Recipe
@@ -184,23 +186,36 @@ export default function RecipeDetail({ recipe }: Props) {
                     <>
                       <h2 className={h2Class}>Before you start</h2>
                       <ul className="mb-8 space-y-2 list-none">
-                        {structured.mise_en_place.map((step, i) => (
-                          <li key={i} className="flex gap-3 font-sans text-base leading-relaxed text-neutral-700">
-                            <span className="text-brand-300 shrink-0">•</span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
+                        {structured.mise_en_place.map((step, i) => {
+                          const timerSeconds = parseStepTime(step)
+                          return (
+                            <li key={i} className="flex gap-3 font-sans text-base leading-relaxed text-neutral-700">
+                              <span className="text-brand-300 shrink-0 mt-0.5">•</span>
+                              <div>
+                                <span>{step}</span>
+                                {timerSeconds !== null && <StepTimer totalSeconds={timerSeconds} />}
+                              </div>
+                            </li>
+                          )
+                        })}
                       </ul>
                     </>
                   )}
                   <h2 className={h2Class}>Instructions</h2>
                   <ol className="space-y-4 list-none">
-                    {structured.steps.map((step, i) => (
-                      <li key={i} className="flex gap-4 font-sans text-base leading-relaxed text-neutral-700">
-                        <span className="font-semibold text-brand-500 shrink-0 min-w-[1.5rem] text-right">{i + 1}.</span>
-                        <span>{step.replace(/^\d+[\.\)]\s*/, '')}</span>
-                      </li>
-                    ))}
+                    {structured.steps.map((step, i) => {
+                      const cleanStep = step.replace(/^\d+[\.\)]\s*/, '')
+                      const timerSeconds = parseStepTime(step)
+                      return (
+                        <li key={i} className="flex gap-4 font-sans text-base leading-relaxed text-neutral-700">
+                          <span className="font-semibold text-brand-500 shrink-0 min-w-[1.5rem] text-right mt-0.5">{i + 1}.</span>
+                          <div>
+                            <span>{cleanStep}</span>
+                            {timerSeconds !== null && <StepTimer totalSeconds={timerSeconds} />}
+                          </div>
+                        </li>
+                      )
+                    })}
                   </ol>
                 </>
               ) : (
