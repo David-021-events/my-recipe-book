@@ -60,3 +60,14 @@ export async function getAdminSession(request: Request): Promise<boolean> {
   if (!match) return false
   return verifyCookie(decodeURIComponent(match[1]))
 }
+
+/**
+ * Reads and verifies the admin session cookie via next/headers — for use in Server Components.
+ * @returns `true` if a valid admin session cookie is present, `false` otherwise.
+ */
+export async function getAdminSessionServer(): Promise<boolean> {
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+  const cookie = cookieStore.get('admin_session')?.value ?? ''
+  return cookie ? verifyCookie(decodeURIComponent(cookie)) : false
+}
