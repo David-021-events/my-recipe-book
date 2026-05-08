@@ -109,21 +109,25 @@ FUNCTION extractRecipe(input):
 
 ## Database Schema
 
-`image_url` column is retained for future use but never written to in v1.
-
 ```sql
 CREATE TABLE recipes (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title        text NOT NULL,
+  slug         text UNIQUE NOT NULL,  -- URL-safe identifier, e.g. "chocolate-chip-cookies"
   raw_input    text,
   instructions text,
   ingredients  jsonb,
   servings     integer DEFAULT 4,
   status       text DEFAULT 'draft',
-  image_url    text,              -- nullable, reserved, no UI in v1
-  created_at   timestamp DEFAULT now()
+  image_url    text,
+  prep_time    integer,               -- minutes
+  cook_time    integer,               -- minutes
+  created_at   timestamp DEFAULT now(),
+  updated_at   timestamp DEFAULT now()
 );
 ```
+
+Slugs are auto-generated from the recipe title on create and regenerated on title update. Collision handling appends a numeric suffix (`-2`, `-3`, etc.).
 
 ### Ingredients JSON Structure
 
@@ -159,22 +163,33 @@ CREATE TABLE recipes (
 
 ```
 /app
-  /page.tsx                    — public recipe list
-  /recipe/[id]/page.tsx        — public recipe detail
-  /admin/page.tsx              — admin recipe list
-  /admin/new/page.tsx          — add recipe
-  /admin/edit/[id]/page.tsx    — edit recipe
+  /page.tsx                         — public recipe list
+  /recipes/[slug]/page.tsx          — public recipe detail (slug-based URL)
+  /admin/layout.tsx                 — admin shell with nav bar
+  /admin/page.tsx                   — admin recipe list
+  /admin/new/page.tsx               — add recipe (text / photo / URL tabs)
+  /admin/edit/[id]/page.tsx         — edit recipe
+  /admin/login/page.tsx             — admin login form
 
 /app/api
-  /extract/route.ts            — Claude extraction endpoint
-  /recipes/route.ts            — GET (public), POST, DELETE (admin)
-  /recipes/[id]/route.ts       — PUT (admin)
+  /extract/route.ts                 — Claude extraction endpoint
+  /recipes/route.ts                 — GET (public list), POST (admin create)
+  /recipes/[id]/route.ts            — GET (public single), PUT / DELETE (admin)
+  /recipes/[id]/image/route.ts      — POST / DELETE recipe image (admin)
+  /admin/login/route.ts             — set admin session cookie
+  /admin/logout/route.ts            — clear admin session cookie
 
 /lib
-  /extract.ts                  — isolated Claude logic (swap this to change AI provider)
-  /convert.ts                  — client-side unit conversion
-  /supabase.ts                 — db client
-  /auth.ts                     — cookie verify helper
+  /extract.ts                       — isolated Claude logic (swap to change AI provider)
+  /slugify.ts                       — slug generation utility
+  /schemas.ts                       — Zod validation schemas for API boundaries
+  /types.ts                         — shared TypeScript types (Recipe, Ingredient, etc.)
+  /compress.ts                      — client-side image compression (Canvas API)
+  /convert.ts                       — client-side unit conversion
+  /storage.ts                       — Supabase Storage helpers for recipe images
+  /supabase.ts                      — db client (public + service-role)
+  /auth.ts                          — HMAC cookie sign / verify; admin session helpers
+  /rate-limit.ts                    — in-memory IP rate limiter for login route
 ```
 
 ---
@@ -229,7 +244,6 @@ Rules:
 
 ## What Is Intentionally Left Simple
 
-- **No image display** — `image_url` column exists, nothing writes to it
 - **No search** — 50 recipes is a scroll problem, not a search problem
 - **No categories** — same reason
 - **Unit conversion** — pure client-side function, no API call
