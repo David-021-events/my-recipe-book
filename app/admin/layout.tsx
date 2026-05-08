@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 
 /**
  * Admin layout — wraps all /admin/* pages with the dark nav bar and neutral background.
@@ -9,6 +10,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-neutral-50">
       <nav className="bg-neutral-900 text-white h-14">
         <div className="max-w-6xl mx-auto px-4 flex items-center gap-6 h-full">
+          <Link
+            href="/"
+            className="font-display italic font-semibold text-sm text-white hover:text-neutral-300 transition-colors"
+          >
+            My Recipe Book
+          </Link>
           <span className="font-sans text-sm font-semibold text-white">Admin</span>
           <a
             href="/admin"
