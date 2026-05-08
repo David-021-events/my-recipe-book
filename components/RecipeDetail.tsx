@@ -65,7 +65,7 @@ export default function RecipeDetail({ recipe }: Props) {
 
       {recipe.image_url && (
         <div className="relative w-full h-96 overflow-hidden">
-          <Image src={recipe.image_url} alt={recipe.title} fill sizes="100vw" className="object-cover" />
+          <Image src={recipe.image_url} alt={recipe.title} fill unoptimized className="object-cover" />
         </div>
       )}
 

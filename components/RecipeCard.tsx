@@ -20,7 +20,7 @@ export default function RecipeCard({ id, title, servings, image_url }: Props) {
     >
       {image_url ? (
         <div className="relative w-full aspect-video">
-          <Image src={image_url} alt={title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
+          <Image src={image_url} alt={title} fill unoptimized className="object-cover" />
         </div>
       ) : (
         <div className="w-full aspect-video bg-brand-100 flex items-center justify-center">
