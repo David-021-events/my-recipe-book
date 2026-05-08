@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { convertIngredient } from '@/lib/convert'
-import type { Recipe, StructuredInstructions } from '@/lib/types'
+import type { Ingredient, Recipe, StructuredInstructions } from '@/lib/types'
 import { parseStepTime } from '@/lib/parse-time'
 import StepTimer from '@/components/StepTimer'
 
@@ -48,10 +48,19 @@ function parseInstructions(raw: string | null): StructuredInstructions | null {
  * Public recipe detail client component.
  * Holds unit system state and converts ingredients on each render — no server round-trip.
  */
+function scaleIngredient(ingredient: Ingredient, scale: number): Ingredient {
+  if (ingredient.quantity == null) return ingredient
+  return { ...ingredient, quantity: Math.round(ingredient.quantity * scale * 100) / 100 }
+}
+
 export default function RecipeDetail({ recipe }: Props) {
   const [unit, setUnit] = useState<'imperial' | 'metric'>('imperial')
+  const [servings, setServings] = useState(recipe.servings)
 
-  const ingredients = (recipe.ingredients ?? []).map((i) => convertIngredient(i, unit))
+  const scale = recipe.servings > 0 ? servings / recipe.servings : 1
+  const ingredients = (recipe.ingredients ?? [])
+    .map((i) => scaleIngredient(i, scale))
+    .map((i) => convertIngredient(i, unit))
   const structured = parseInstructions(recipe.instructions)
   const h2Class = 'font-display text-[1.375rem] font-semibold leading-snug text-neutral-900 mb-4'
 
@@ -79,9 +88,23 @@ export default function RecipeDetail({ recipe }: Props) {
 
         {/* Metadata bar */}
         <div className="flex items-center gap-4 mt-3 flex-wrap">
-          <span className="font-sans text-[0.8125rem] text-neutral-500">
-            {recipe.servings} {recipe.servings === 1 ? 'serving' : 'servings'}
-          </span>
+          <div className="inline-flex items-center gap-1.5 font-sans text-[0.8125rem] text-neutral-500">
+            <button
+              onClick={() => setServings((s) => Math.max(1, s - 1))}
+              aria-label="Decrease servings"
+              className="w-5 h-5 rounded-full border border-neutral-300 flex items-center justify-center hover:bg-neutral-100 transition-colors leading-none"
+            >
+              −
+            </button>
+            <span>{servings} {servings === 1 ? 'serving' : 'servings'}</span>
+            <button
+              onClick={() => setServings((s) => Math.min(99, s + 1))}
+              aria-label="Increase servings"
+              className="w-5 h-5 rounded-full border border-neutral-300 flex items-center justify-center hover:bg-neutral-100 transition-colors leading-none"
+            >
+              +
+            </button>
+          </div>
           {recipe.prep_time && (
             <span className="font-sans text-[0.8125rem] text-neutral-500">
               {formatTime(recipe.prep_time)} prep
