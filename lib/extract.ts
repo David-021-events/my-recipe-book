@@ -8,7 +8,7 @@ const PROMPT = `You are a recipe parser. Extract the following from the input an
 Return this structure:
 {
   "title": string,
-  "servings": number,
+  "servings": number,  // estimate based on recipe yield if not stated
   "prep_time": number | null,
   "cook_time": number | null,
   "ingredients": [
@@ -41,19 +41,19 @@ Rules:
 
 const RecipeExtractedSchema = z.object({
   title: z.string(),
-  servings: z.number(),
+  servings: z.number().catch(4),
   prep_time: z.number().nullable().optional(),
   cook_time: z.number().nullable().optional(),
   ingredients: z.array(
     z.object({
       name: z.string(),
-      quantity: z.number().nullable(),
+      quantity: z.number().nullable().catch(null),
       unit: z
         .enum(['tsp', 'tbsp', 'cup', 'oz', 'lb', 'ml', 'g', 'kg', 'clove', 'pinch', 'count'])
         .nullable()
         .catch(null),
-      hard_to_find: z.boolean(),
-      substitutions: z.array(z.string()).max(2),
+      hard_to_find: z.boolean().catch(false),
+      substitutions: z.array(z.string()).catch([]),
     })
   ),
   instructions: z
