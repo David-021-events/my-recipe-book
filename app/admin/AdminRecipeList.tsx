@@ -38,10 +38,22 @@ export default function AdminRecipeList({ recipes }: Props) {
 
   if (recipes.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
-        <p className="font-sans text-neutral-500">No recipes yet.</p>
-        <a href="/admin/new" className="font-sans text-sm text-brand-500 hover:text-brand-600 mt-2 inline-block">
-          Add your first recipe →
+      <div className="bg-brand-50 border border-brand-200 rounded-lg px-6 py-8">
+        <p className="font-display text-lg font-semibold text-neutral-900 mb-1">
+          Welcome to your Recipe Book!
+        </p>
+        <p className="font-sans text-sm text-neutral-600 mb-4">
+          Add your first recipe using the{' '}
+          <a href="/admin/new" className="text-brand-600 font-semibold hover:underline">
+            + Add Recipe
+          </a>{' '}
+          button — snap a photo, paste a link, or type it out.
+        </p>
+        <a
+          href="/admin/new"
+          className="inline-block bg-brand-500 hover:bg-brand-600 text-white font-sans font-semibold text-sm px-5 py-2.5 rounded-md transition-colors"
+        >
+          Add your first recipe
         </a>
       </div>
     )
