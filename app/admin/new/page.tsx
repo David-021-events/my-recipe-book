@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { compressImage } from '@/lib/compress'
 import type { RecipeExtracted } from '@/lib/extract'
+import PhotoPicker from './PhotoPicker'
 
 type Tab = 'text' | 'photo' | 'url'
 
@@ -32,8 +33,6 @@ export default function NewRecipePage() {
   const [preview, setPreview] = useState<RecipeExtracted | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
-
   // Editable preview fields
   const [title, setTitle] = useState('')
   const [servings, setServings] = useState('4')
@@ -72,7 +71,7 @@ export default function NewRecipePage() {
     )
   }
 
-  async function extract(type: 'text' | 'image' | 'url', content: string) {
+  async function extract(type: 'text' | 'image' | 'url', content: string | string[]) {
     setExtracting(true)
     setExtractError('')
     setFallbackText('')
@@ -135,14 +134,21 @@ export default function NewRecipePage() {
     await extract('text', text)
   }
 
-  async function handleExtractPhoto() {
-    const file = fileRef.current?.files?.[0]
-    if (!file) return
+  async function handleExtractPhoto(files: File[]) {
+    if (!files.length) return
     setExtracting(true)
     setExtractError('')
     try {
-      const base64 = await compressImage(file)
-      await extract('image', base64)
+      const results = await Promise.allSettled(files.map((f) => compressImage(f)))
+      const compressed = results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value)
+      if (!compressed.length) {
+        setExtracting(false)
+        setExtractError('Could not read any of the selected images. Try different files.')
+        return
+      }
+      await extract('image', compressed)
     } catch {
       setExtracting(false)
       setExtractError('Could not read image. Try a different file.')
@@ -284,25 +290,7 @@ export default function NewRecipePage() {
 
       {/* Upload Photo tab */}
       {tab === 'photo' && !preview && !fallbackText && (
-        <div className="space-y-4">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png"
-            aria-label="Recipe photo (JPEG or PNG)"
-            className="block font-sans text-sm text-neutral-700"
-          />
-          <p className="font-sans text-xs text-neutral-500">
-            Image will be compressed to ~400KB before uploading.
-          </p>
-          <button
-            onClick={handleExtractPhoto}
-            disabled={extracting}
-            className="bg-brand-500 hover:bg-brand-600 text-white font-sans font-semibold text-sm px-5 py-2.5 rounded-md transition-colors min-h-[44px] disabled:opacity-50"
-          >
-            {extracting ? 'Extracting…' : 'Extract Recipe'}
-          </button>
-        </div>
+        <PhotoPicker extracting={extracting} onExtract={handleExtractPhoto} />
       )}
 
       {/* Paste URL tab */}

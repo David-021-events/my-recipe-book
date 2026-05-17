@@ -67,10 +67,10 @@ const RecipeExtractedSchema = z.object({
 /** The validated, structured recipe data produced by the Claude extraction pipeline. */
 export type RecipeExtracted = z.infer<typeof RecipeExtractedSchema>
 
-/** Discriminated union of inputs accepted by {@link extractRecipe}: plain text, base64 image, or URL. */
+/** Discriminated union of inputs accepted by {@link extractRecipe}: plain text, base64 images, or URL. */
 export type ExtractionInput =
   | { type: 'text'; text: string }
-  | { type: 'image'; data: string; mediaType: 'image/jpeg' | 'image/png' }
+  | { type: 'image'; images: Array<{ data: string; mediaType: 'image/jpeg' | 'image/png' }> }
   | { type: 'url'; url: string }
 
 /**
@@ -90,11 +90,11 @@ function buildMessages(input: ExtractionInput & { type: 'text' | 'image' }): Ant
       {
         role: 'user',
         content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: input.mediaType, data: input.data },
-          },
-          { type: 'text', text: PROMPT },
+          ...input.images.map((img) => ({
+            type: 'image' as const,
+            source: { type: 'base64' as const, media_type: img.mediaType, data: img.data },
+          })),
+          { type: 'text' as const, text: PROMPT },
         ],
       },
     ]

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { convertIngredient } from '@/lib/convert'
@@ -56,6 +56,21 @@ function scaleIngredient(ingredient: Ingredient, scale: number): Ingredient {
 export default function RecipeDetail({ recipe }: Props) {
   const [unit, setUnit] = useState<'imperial' | 'metric'>('imperial')
   const [servings, setServings] = useState(recipe.servings)
+  const [openSubIdx, setOpenSubIdx] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (openSubIdx === null) return
+    function handleClose(e: MouseEvent | KeyboardEvent) {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return
+      setOpenSubIdx(null)
+    }
+    document.addEventListener('click', handleClose)
+    document.addEventListener('keydown', handleClose)
+    return () => {
+      document.removeEventListener('click', handleClose)
+      document.removeEventListener('keydown', handleClose)
+    }
+  }, [openSubIdx])
 
   const scale = recipe.servings > 0 ? servings / recipe.servings : 1
   const ingredients = (recipe.ingredients ?? [])
@@ -174,23 +189,35 @@ export default function RecipeDetail({ recipe }: Props) {
                     )}
                   </div>
                   {ingredient.hard_to_find && (
-                    <div className="relative group inline-flex ml-2 shrink-0">
-                      <span
-                        role="img"
+                    <div className="relative inline-flex ml-2 shrink-0">
+                      <button
+                        type="button"
                         aria-label={
                           ingredient.substitutions.length > 0
                             ? `Hard to find — substitute: ${ingredient.substitutions.join(' or ')}`
                             : 'Hard to find — no suitable alternative'
                         }
-                        className="text-warning-500 text-base cursor-help"
+                        aria-expanded={openSubIdx === i}
+                        aria-describedby={openSubIdx === i ? `sub-tooltip-${i}` : undefined}
+                        className="appearance-none bg-transparent border-0 p-0 cursor-pointer text-warning-500 text-base min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOpenSubIdx((prev) => (prev === i ? null : i))
+                        }}
                       >
                         ⚠
-                      </span>
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-48 bg-neutral-800 text-white text-xs rounded px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-normal text-center">
-                        {ingredient.substitutions.length > 0
-                          ? ingredient.substitutions.join(' or ')
-                          : 'No Suitable Alternative'}
-                      </div>
+                      </button>
+                      {openSubIdx === i && (
+                        <div
+                          id={`sub-tooltip-${i}`}
+                          role="tooltip"
+                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-48 bg-neutral-800 text-white text-xs rounded px-2 py-1.5 z-10 whitespace-normal text-center"
+                        >
+                          {ingredient.substitutions.length > 0
+                            ? ingredient.substitutions.join(' or ')
+                            : 'No Suitable Alternative'}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

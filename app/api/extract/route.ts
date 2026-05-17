@@ -5,15 +5,17 @@ import { extractRecipe } from '@/lib/extract'
 
 export const maxDuration = 60
 
-const ExtractRequestSchema = z.object({
-  type: z.enum(['text', 'image', 'url']),
-  content: z.string().min(1),
-})
+const ExtractRequestSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), content: z.string().min(1) }),
+  z.object({ type: z.literal('url'), content: z.string().min(1) }),
+  // Max 3 images keeps payload well under Vercel's 4.5MB body limit (~1.6MB for 3 × 400KB compressed)
+  z.object({ type: z.literal('image'), content: z.array(z.string().min(1)).min(1).max(3) }),
+])
 
 /**
  * POST /api/extract — Extracts a structured recipe from text, image (base64), or URL.
  * Requires a valid admin session cookie.
- * @param request - JSON body: `{ type: 'text' | 'image' | 'url', content: string }`
+ * @param request - JSON body: `{ type: 'text' | 'url', content: string }` or `{ type: 'image', content: string[] }` (1–3 base64 images)
  */
 export async function POST(request: NextRequest) {
   if (!await getAdminSession(request)) {
@@ -42,8 +44,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'image') {
-      const mediaType = content.startsWith('/9j') ? 'image/jpeg' : 'image/png'
-      const result = await extractRecipe({ type: 'image', data: content, mediaType })
+      const images = content.map((data) => ({
+        data,
+        // Standard JPEG base64 starts with /9j; PNG starts with iVBORw — reliable for Canvas-compressed output
+        mediaType: (data.startsWith('/9j') ? 'image/jpeg' : 'image/png') as 'image/jpeg' | 'image/png',
+      }))
+      const result = await extractRecipe({ type: 'image', images })
       return NextResponse.json(result)
     }
   } catch (err) {
