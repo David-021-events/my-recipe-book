@@ -111,7 +111,7 @@ export default function AdminRecipeList({ recipes }: Props) {
                   <StatusBadge status={recipe.status} />
                 </td>
                 <td className="px-6 py-4 font-sans text-sm text-neutral-500">
-                  {new Date(recipe.created_at).toLocaleDateString()}
+                  {new Date(recipe.created_at).toLocaleDateString('en-CA', { timeZone: 'UTC' })}
                 </td>
                 <td className="px-6 py-4 text-right space-x-4">
                   {recipe.status === 'published' && (

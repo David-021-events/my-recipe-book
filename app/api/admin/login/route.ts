@@ -26,12 +26,14 @@ export async function POST(request: NextRequest) {
   const { password } = await request.json()
 
   const submitted = Buffer.from(password ?? '')
-  const expected = Buffer.from(process.env.ADMIN_PASSWORD ?? '')
+  const validPasswords = [process.env.ADMIN_PASSWORD, process.env.MOM_PASSWORD].filter(
+    Boolean
+  ) as string[]
 
-  let valid = false
-  if (submitted.length === expected.length) {
-    valid = crypto.timingSafeEqual(submitted, expected)
-  }
+  let valid = validPasswords.some((pw) => {
+    const expected = Buffer.from(pw)
+    return submitted.length === expected.length && crypto.timingSafeEqual(submitted, expected)
+  })
 
   if (!valid) {
     recordFailedAttempt(ip)
