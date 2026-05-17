@@ -1,17 +1,18 @@
 import { supabaseAdmin } from '@/lib/supabase'
+import { getAdminSessionServer } from '@/lib/auth'
 import type { Recipe } from '@/lib/types'
 import AdminRecipeList from './AdminRecipeList'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * Admin recipes list page — server component that fetches all recipes (draft + published)
- * and passes them to the client list component for rendering and interactions.
- */
 export default async function AdminPage() {
+  const session = await getAdminSessionServer()
+  if (!session.valid) return null
+
   const { data, error } = await supabaseAdmin
     .from('recipes')
     .select('id, title, status, created_at, servings, slug')
+    .eq('user_id', session.userId)
     .order('created_at', { ascending: false })
 
   if (error) {

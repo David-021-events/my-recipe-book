@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCookie } from '@/lib/auth'
 
-/**
- * Next.js middleware that guards all `/admin/*` routes (excluding `/admin/login`).
- * Redirects unauthenticated requests to `/admin/login`.
- * @param request - The incoming Next.js request.
- * @returns A redirect response if unauthenticated, or `NextResponse.next()` to continue.
- */
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const cookie = request.cookies.get('admin_session')?.value ?? ''
-  const valid = cookie ? await verifyCookie(decodeURIComponent(cookie)) : false
+  const session = cookie ? await verifyCookie(decodeURIComponent(cookie)) : { valid: false as const }
 
-  if (!valid) {
+  if (!session.valid) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/admin/login'
     return NextResponse.redirect(loginUrl)
+  }
+
+  if (session.mustChangePassword) {
+    const changeUrl = request.nextUrl.clone()
+    changeUrl.pathname = '/change-password'
+    return NextResponse.redirect(changeUrl)
   }
 
   return NextResponse.next()

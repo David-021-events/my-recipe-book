@@ -5,7 +5,8 @@ import { RecipeInputSchema } from '@/lib/schemas'
 import { slugify } from '@/lib/slugify'
 
 /**
- * GET /api/recipes — Returns the list of published recipes (summary fields only), ordered newest first.
+ * GET /api/recipes — Returns published recipes (summary fields only), ordered newest first.
+ * Public endpoint; after RLS is enabled this returns only recipes visible to the anon role.
  */
 export async function GET() {
   const { data, error } = await supabase
@@ -19,11 +20,11 @@ export async function GET() {
 }
 
 /**
- * POST /api/recipes — Creates a new recipe. Requires a valid admin session cookie.
- * @param request - The incoming request containing the recipe JSON body.
+ * POST /api/recipes — Creates a new recipe scoped to the authenticated user.
  */
 export async function POST(request: NextRequest) {
-  if (!await getAdminSession(request)) {
+  const session = await getAdminSession(request)
+  if (!session.valid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -33,11 +34,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const slug = await uniqueSlug(parsed.data.title)
+  const slug = await uniqueSlug(parsed.data.title, session.userId)
 
   const { data, error } = await supabaseAdmin
     .from('recipes')
-    .insert({ ...parsed.data, slug })
+    .insert({ ...parsed.data, slug, user_id: session.userId })
     .select()
     .single()
 
@@ -45,9 +46,13 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(data, { status: 201 })
 }
 
-async function uniqueSlug(title: string, excludeId?: string): Promise<string> {
+async function uniqueSlug(title: string, userId: string, excludeId?: string): Promise<string> {
   const base = slugify(title)
-  const query = supabaseAdmin.from('recipes').select('slug').like('slug', `${base}%`)
+  const query = supabaseAdmin
+    .from('recipes')
+    .select('slug')
+    .eq('user_id', userId)
+    .like('slug', `${base}%`)
   if (excludeId) query.neq('id', excludeId)
   const { data } = await query
   const existing = new Set(data?.map((r) => r.slug) ?? [])

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminSession } from '@/lib/auth'
 import { extractRecipe } from '@/lib/extract'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export const maxDuration = 60
 
@@ -14,13 +15,44 @@ const ExtractRequestSchema = z.discriminatedUnion('type', [
 
 /**
  * POST /api/extract — Extracts a structured recipe from text, image (base64), or URL.
- * Requires a valid admin session cookie.
- * @param request - JSON body: `{ type: 'text' | 'url', content: string }` or `{ type: 'image', content: string[] }` (1–3 base64 images)
+ * Requires a valid session. Checks and logs monthly extraction quota before calling Claude.
  */
 export async function POST(request: NextRequest) {
-  if (!await getAdminSession(request)) {
+  const session = await getAdminSession(request)
+  if (!session.valid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { userId } = session
+
+  // Check monthly extraction quota
+  const startOfMonth = new Date()
+  startOfMonth.setUTCDate(1)
+  startOfMonth.setUTCHours(0, 0, 0, 0)
+
+  const [{ data: user }, { count: usedThisMonth }] = await Promise.all([
+    supabaseAdmin.from('users').select('monthly_limit').eq('id', userId).single(),
+    supabaseAdmin
+      .from('extractions_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', startOfMonth.toISOString()),
+  ])
+
+  const limit = (user as { monthly_limit: number } | null)?.monthly_limit ?? 30
+  const used = usedThisMonth ?? 0
+
+  if (used >= limit) {
+    const nextMonth = new Date(startOfMonth)
+    nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1)
+    const resetDate = nextMonth.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+    return NextResponse.json(
+      { error: `You've reached your ${limit}-extraction monthly limit. It resets on ${resetDate}.` },
+      { status: 429 }
+    )
+  }
+
+  // Log the extraction attempt before calling Claude (prevents race-condition double-spend)
+  await supabaseAdmin.from('extractions_log').insert({ user_id: userId })
 
   const body: unknown = await request.json()
   const parsed = ExtractRequestSchema.safeParse(body)

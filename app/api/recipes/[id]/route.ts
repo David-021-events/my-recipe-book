@@ -5,7 +5,7 @@ import { RecipeInputSchema } from '@/lib/schemas'
 import { slugify } from '@/lib/slugify'
 
 /**
- * GET /api/recipes/[id] — Returns a single published recipe by ID.
+ * GET /api/recipes/[id] — Returns a single published recipe by ID (public).
  */
 export async function GET(
   _request: NextRequest,
@@ -24,13 +24,14 @@ export async function GET(
 }
 
 /**
- * PUT /api/recipes/[id] — Replaces a recipe. Requires a valid admin session cookie.
+ * PUT /api/recipes/[id] — Replaces a recipe. Scoped to the authenticated user.
  */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await getAdminSession(request)) {
+  const session = await getAdminSession(request)
+  if (!session.valid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -41,12 +42,13 @@ export async function PUT(
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const slug = await uniqueSlug(parsed.data.title, id)
+  const slug = await uniqueSlug(parsed.data.title, session.userId, id)
 
   const { data, error } = await supabaseAdmin
     .from('recipes')
     .update({ ...parsed.data, slug, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('user_id', session.userId)
     .select()
     .single()
 
@@ -55,13 +57,14 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/recipes/[id] — Deletes a recipe. Requires a valid admin session cookie.
+ * DELETE /api/recipes/[id] — Deletes a recipe. Scoped to the authenticated user.
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await getAdminSession(request)) {
+  const session = await getAdminSession(request)
+  if (!session.valid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -70,14 +73,19 @@ export async function DELETE(
     .from('recipes')
     .delete()
     .eq('id', id)
+    .eq('user_id', session.userId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return new NextResponse(null, { status: 204 })
 }
 
-async function uniqueSlug(title: string, excludeId?: string): Promise<string> {
+async function uniqueSlug(title: string, userId: string, excludeId?: string): Promise<string> {
   const base = slugify(title)
-  const query = supabaseAdmin.from('recipes').select('slug').like('slug', `${base}%`)
+  const query = supabaseAdmin
+    .from('recipes')
+    .select('slug')
+    .eq('user_id', userId)
+    .like('slug', `${base}%`)
   if (excludeId) query.neq('id', excludeId)
   const { data } = await query
   const existing = new Set(data?.map((r) => r.slug) ?? [])
