@@ -23,14 +23,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           >
             Recipes
           </a>
-          <form action="/api/admin/logout" method="POST" className="ml-auto">
-            <button
-              type="submit"
+          <div className="ml-auto flex items-center gap-4">
+            <a
+              href="/admin/account"
               className="font-sans text-sm text-neutral-400 hover:text-white transition-colors"
             >
-              Log out
-            </button>
-          </form>
+              Account
+            </a>
+            <form action="/api/admin/logout" method="POST">
+              <button
+                type="submit"
+                className="font-sans text-sm text-neutral-400 hover:text-white transition-colors"
+              >
+                Log out
+              </button>
+            </form>
+          </div>
         </div>
       </nav>
       <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
