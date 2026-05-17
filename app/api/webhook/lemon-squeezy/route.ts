@@ -127,7 +127,7 @@ async function sendWelcomeEmail(email: string, tempPassword: string): Promise<vo
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'My Recipe Book <noreply@your-domain.com>',
+      from: 'My Recipe Book <noreply@myjamm.com>',
       to: [email],
       subject: 'Your Recipe Book is ready',
       html: `

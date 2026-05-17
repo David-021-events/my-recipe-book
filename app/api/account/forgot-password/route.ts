@@ -51,7 +51,7 @@ async function sendResetEmail(email: string, resetLink: string): Promise<void> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'My Recipe Book <noreply@your-domain.com>',
+      from: 'My Recipe Book <noreply@myjamm.com>',
       to: [email],
       subject: 'Reset your Recipe Book password',
       html: `
